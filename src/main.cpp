@@ -107,8 +107,6 @@ int main() {
           py = py + v * sin(psi) * dt;
           psi = psi - v * steer_value / Lf * dt;
           v = v + throttle_value * dt;
-          ptsx[0] = px;
-          ptsy[0] = py;
 
           // convert waypoints to car coords
           double shift_psi = 0.0 - psi;
