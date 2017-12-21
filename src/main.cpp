@@ -2,8 +2,10 @@
 #include <uWS/uWS.h>
 #include <chrono>
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <vector>
+#include <fstream>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
@@ -72,7 +74,10 @@ int main() {
   // MPC is initialized here!
   MPC mpc;
 
-  h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  ofstream mylog;
+  mylog.open("error.log", ios::out);
+
+  h.onMessage([&mpc, &mylog](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -92,6 +97,18 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double steer_value = j[1]["steering_angle"];
+          double throttle_value = j[1]["throttle"];
+
+          double Lf = 2.67;
+          double dt = 0.1;
+          // account for latency
+          px = px + v * cos(psi) * dt;
+          py = py + v * sin(psi) * dt;
+          psi = psi - v * steer_value / Lf * dt;
+          v = v + throttle_value * dt;
+          ptsx[0] = px;
+          ptsy[0] = py;
 
           // convert waypoints to car coords
           double shift_psi = 0.0 - psi;
@@ -109,13 +126,15 @@ int main() {
           Eigen::Map<Eigen::VectorXd> ptsy_transform(ptry, 6);
 
           auto coeffs = polyfit(ptsx_transform, ptsy_transform, 3);
-
           double cte = polyeval(coeffs, 0);
-
           double epsi = -atan(coeffs[1]);
 
           Eigen::VectorXd state(6);
+
           state << 0, 0, 0, v, cte, epsi;
+
+          mylog << ++cnt << "," << cte << "," << epsi << "," << v << "\n";
+          mylog.flush();
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -126,9 +145,8 @@ int main() {
 
           auto vars = mpc.Solve(state, coeffs);
 
-          double Lf = 2.67;
-          double steer_value = vars[0] / deg2rad(25)/Lf;
-          double throttle_value = vars[1];
+          steer_value = vars[0] / deg2rad(25)/Lf;
+          throttle_value = vars[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -172,8 +190,7 @@ int main() {
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
-
-
+        
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
 
@@ -215,10 +232,11 @@ int main() {
     std::cout << "Connected!!!" << std::endl;
   });
 
-  h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code,
+  h.onDisconnection([&h, &mylog](uWS::WebSocket<uWS::SERVER> ws, int code,
                          char *message, size_t length) {
     ws.close();
     std::cout << "Disconnected" << std::endl;
+    mylog.close();
   });
 
   int port = 4567;

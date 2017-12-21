@@ -49,8 +49,8 @@ class FG_eval {
 
     // reference state cost
     for (int i = 0; i < N; ++i) {
-      fg[0] += 10000 * CppAD::pow(vars[cte_start + i] - 0, 2);
-      fg[0] += 10000 * CppAD::pow(vars[epsi_start + i] - 0, 2);
+      fg[0] += 5000 * CppAD::pow(vars[cte_start + i] - 0, 2);
+      fg[0] += 5000 * CppAD::pow(vars[epsi_start + i] - 0, 2);
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
     }
 
@@ -62,7 +62,7 @@ class FG_eval {
 
     // gap between seq actuators cost
     for (int i = 0; i < N-2; ++i) {
-      fg[0] += 2000 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 250 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
       fg[0] += 10 * CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
