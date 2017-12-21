@@ -1,5 +1,35 @@
 # CarND-Controls-MPC
-Self-Driving Car Engineer Nanodegree Program
+---
+## Description
+
+This repository holds the source code for a model predictive controller (MPC) used to steer a car around the lake track in Udacity's Self Driving Car Term 2 Simulator.  
+
+---
+## Rubric Points
+
+#### <b>1. The Model</b>: Student describes their model in detail. This includes the state, actuators and update equations.
+
+The MPC in this repository utilizes a kinematic model to predict the vehicle's state over time.  The model uses the vehicle's current state and actuator values, namely the x and y coordinates (x, y), orientation angle (Ψ), velocity (v), steering angle (δ), and acceleration (a) along the distance between the front of the vehicle and the it's center of gravity (L<sub>f</sub>) to calculate the vehicle's state change over time including the vehicle's cross track error (cte) and error in psi (eΨ).  The following equations are used to calculate state<sub>t+1</sub> value given state<sub>t</sub>:
+<i>
+* x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub> * cos(Ψ<sub>t</sub>) * Δt
+* y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub> * sin(Ψ<sub>t</sub>) * Δt
+* Ψ<sub>t+1</sub> = Ψ<sub>t</sub> + v<sub>t</sub> / L<sub>f</sub> * δ<sub>t</sub> * Δt
+* v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub> * Δt
+* cte<sub>t+1</sub> = f(x<sub>t</sub>) - y<sub>t</sub> + v<sub>t</sub> * sin(epsi<sub>t</sub>) * Δt
+*  eΨ<sub>t+1</sub> = Ψ<sub>t</sub> -  Ψdes<sub>t</sub> + v<sub>t</sub> / L<sub>f</sub> * δ<sub>t</sub> * Δt
+</i>
+
+#### <b>2. Timestep Length and Elapsed Duration (N & dt)</b>: Student discusses the reasoning behind the chosen N (timestep length) and dt (elapsed duration between timesteps) values. Additionally the student details the previous values tried.
+
+N and dt were chosen in this MPC through trial and error.  At higher values of N and/or lower values of dt, the vehicle acted erratically.  At lower values N and/or higher values of dt, the vehicle drove too safe, nearly stopping around corners.  N was tested at values ranging from 5 to 30 and dt at values ranging from 0.05 to 0.2.  The final values were N = 10 and dt = 0.1 which caused the vehicle to smoothly travel the entire track.
+
+#### <b>3. Polynomial Fitting and MPC Preprocessing</b>: A polynomial is fitted to waypoints.  If the student preprocesses waypoints, the vehicle state, and/or actuators prior to the MPC procedure it is described.
+
+The simulator passes waypoint coordinates to the MPC application.  These waypoints are preprocessed by transforming them to the vehicle's perspective setting the origin to the vehicle's x, y coordinate and rotating the system so the vehicle's orientation is also 0.  This can be found in lines 110 - 116 in main.cpp.  These shifted coordinates are then fitted to a 3rd degree polynomial using the polyfit method in lines 48 - 62 in main.cpp.
+
+#### <b>4. Model Predictive Control with Latency</b>: The student implements Model Predictive Control that handles a 100 millisecond latency. Student provides details on how they deal with latency.
+
+Prior to fitting the polynomial, the vehicle's current state was shifted to t+1 using the equations above to take vehicle command latency into account. This state change can be found in lines 101 - 107 of main.cpp.  After latency is taken into account, the waypoint points are translated to vehicle's new latency shifted perspective, and the new waypoints are passed into the polynomial fit function to get the desired trajectory's 3rd degree polynomial, the coefficients from the polynomial are used to get the starting cte and eΨ to be used along with the new velocity to make up the vehicle's starting state to be used by the MPC.  This state and the 3rd degree polynomial are then passed to the MPC::solve() function to calculate the next steering value and throttle value to be sent back to the simulator's actuators.  This is done by optimizing actuator inputs at each dt over our N states to minimize a cost function.  The total cost to be minimized is defined as the sum of a number of different cost functions related to the actuator changes and system state over time.  These functions include the cross track error, error in psi, distance to desired velocity, actuator use, and magnitude of actuator change between two states.  Each separate cost function was then further tuned by adding a multiplier to the function depending as it relates to that specific cost functions magnitude of importance.  For instance, the cost function for the cross track error and error in psi have very large multipliers compared to the other functions because above all else, we want the vehicle to stay on the road.  All functions' magnitudes were tuned first by intuition and then further by trial and error.
 
 ---
 
